@@ -1,0 +1,243 @@
+---
+title: "MVA Project"
+author: "Team Avengers"
+date: "25 April 2018"
+output: word_document
+---
+
+DATA PROCESSING
+
+```{r}
+food <- read.csv("project.csv")
+food.2 <- food[,-c(1,3,4,5,6,7)]
+food.3 <- food[,-c(1,2,3,4,5,6,7)]
+food.group <- aggregate(.~FoodGroup, data=food.2, mean)
+labels <- food.group$FoodGroup
+food.group <- food.group[,-1]
+rownames(food.group) <- labels
+head(food.group)
+
+
+```
+
+##################################################################################
+VISUALIZATION
+
+```{r}
+#scatter plot, Carb_g v Sugar_g
+#plot(nutrition$Carb_g, nutrition$Sugar_g, xlab = "Carbohydrates (g)", 
+#     ylab = "Sugars (g)", main = "Carbohydrates vs Sugars in Foods" )
+#x <- jitter(nutrition$Carb_g)
+#y <- jitter(nutrition$Sugar_g)
+#plot(x, y, xlab = "Carbohydrates (g)", 
+#     ylab = "Sugars (g)", main = "Carbohydrates vs Sugars in Foods")
+
+#add rug
+#rug(x, side = 1, col = "red")
+#rug(y, side = 2, col = "blue")
+#as we can see, we need to aggregate the groups for proper analysis
+
+#need to aggregate food groups as we cannot tell anything from the data by 
+#plotting every individual item
+
+#remove unnecssary categorical data columns for analysis
+food.2 <- food[,-c(1,3,4,5,6,7)]
+food.group <- aggregate(.~FoodGroup, data=food.2, mean)
+labels <- food.group$FoodGroup
+food.group <- food.group[,-1]
+rownames(food.group) <- labels
+
+#Food group carb_g v Sugar_g scatterplot
+plot(food.group$Carb_g, food.group$Sugar_g, xlab = "Carbohydrates (g)", 
+     ylab = "Sugars (g)", main = "Carbohydrates vs Sugars in Food Groups" )
+#add rug
+rug(food.group$Carb_g, side = 1, col = "red")
+rug(food.group$Sugar_g, side = 2, col = "blue")
+
+#Select Carbs and Sugars columns
+mydata <- food.group[, c("Carb_g", "Sugar_g")]
+
+#Sugars v Carbs bivariate-boxplot
+library(MVA)
+bvbox(mydata, xlab = "Carbohydrates (g)", ylab = "Sugars (g)",
+      main = "Bivariate Boxplot: Carbs v Sugars")
+text(mydata, labels = rownames(mydata), cex = .5)
+#Here, Sweets, breakfast cereals, and cereal, grains and Pasta are outliers
+
+#original correlation
+cor(food.group$Carb_g, food.group$Sugar_g)
+
+#remove outliers
+outlier <- match(c("Sweets", "Breakfast Cereals",
+                   "Cereal Grains and Pasta"),
+                 rownames(food.group))
+#correlation with outliers removed
+cor(food.group$Carb_g[-outlier], food.group$Sugar_g[-outlier])
+
+#chi-plot: sugars v carbs
+library(MVA)
+chiplot(food.group$Carb_g, food.group$Sugar_g, main = "Chi-plot: Carbs v Sugars")
+
+#Protein v Fats Scatterplot
+plot(food.group$Protein_g, food.group$Fat_g, xlab = "Protein (g)", 
+     ylab = "Fat (g)", main = "Protein vs Fat in Food Groups" )
+#add rug
+rug(food.group$Protein_g, side = 1, col = "red")
+rug(food.group$Fat_g, side = 2, col = "blue")
+
+#Select Protein and Fats columns
+mydata <- food.group[, c("Protein_g", "Fat_g")]
+
+#Protein v Fat bivariate-boxplot
+bvbox(mydata, xlab = "Protein (g)", ylab = "Fat (g)",
+      main = "Bivariate Boxplot: Protein v Fat")
+text(mydata, labels = rownames(mydata), cex = .5)
+#Here, Fats and Oils and Nut and Seed products are outliers
+
+#original correlation
+cor(food.group$Protein_g, food.group$Fat_g)
+
+#remove outliers
+outlier <- match(c("Fats and Oils", "Nut and Seed Products"), rownames(food.group))
+#correlation with outliers removed
+cor(food.group$Protein_g[-outlier], food.group$Fat_g[-outlier])
+
+#chi-plot: Protein v Fats
+chiplot(food.group$Protein_g, food.group$Fat_g, main = "Chi-plot: Protein v Fat")
+```
+
+##################################################################################
+PCA
+
+```{r}
+food_data<- read.csv("project.csv")
+food_data_new <- food_data[,c(2,8,9,10,11,12,13)]
+food_group <- aggregate(.~FoodGroup, data=food_data_new, mean)
+labels <- food_group$FoodGroup
+food_group <- food_group[,-1]
+rownames(food_group) <- labels
+head(food_group)
+#cor_food <- cor(food_group)
+food_pca <- princomp(food_group,cor=T)
+summary(food_pca, loadings = T)
+biplot(food_pca,col=c("black", "red"), cex = 0.7, expand = 1.2)
+screeplot(food_pca)
+
+
+food_data<- read.csv("project.csv")
+food_data_new2 <- food_data[,c(2,23,24,25,26,27,28,29,30)]
+food_group2 <- aggregate(.~FoodGroup, data=food_data_new, mean)
+labels <- food_group2$FoodGroup
+food_group2 <- food_group2[,-1]
+rownames(food_group2) <- labels
+head(food_group2)
+#cor_food <- cor(food_group)
+food_group2_scale<- scale(food_group2)
+food_pca2 <- princomp(food_group2_scale,cor=T)
+
+summary(food_pca2, loadings = T)
+biplot(food_pca2,col=c("black", "blue"), cex = 0.7, expand = 0.8)
+screeplot(food_pca2)
+
+```
+
+
+
+##################################################################################
+MULTIDIMENSIONAL SCALING
+
+```{r}
+dist <- dist(scale(food.group))
+# apply MDS
+library(MVA)
+library(ggplot2)
+library(ggrepel)
+food.mds = cmdscale(dist, eig = T)
+eignv <- abs(food.mds$eig)
+round(head(cumsum(eignv^2)/sum(eignv^2)), 2)
+scrs <- as.data.frame(food.mds$points)
+ggplot(scrs) + geom_point(aes(x = V1, y = V2), color="red") + geom_text_repel(aes(V1, V2, label=rownames(scrs)), size = 4)
+```
+Some food are near each other which suggests that they share some similarities across the nutritional ingredients. E.g., Lamb Products, Beef Products, Poultry Products, and Pork Products are close to each other and all have high calorie, protein, fat, folate, niacin and selenium.
+
+Some group nature are indicated in the plot. E.g., Lamb Products , Beef Products, Poultry Products, and Pork Products are all types of meat products. Sweets, Beverages, and Fruits and Fruit Juices are all types of sweet food. Cereal Grains and Legume Products are all types of cereal food.
+
+
+################################################################################## 
+FACTOR ANALYSIS
+
+Each factor captures a certain amount of the overall variance in the observed variables, and the factors are always listed in order of how much variation they explain.
+```{r}
+library(psych)
+library(GPArotation)
+
+
+#Finding the number of factors
+#This can be evaluated via methods such as `Parallel Analysis` and `eigenvalue`.
+
+parallel <- fa.parallel(food.group, fm = 'minres', fa = 'fa',quant = 0.95)
+
+#Blue line represents the eigen value
+
+factor_5 <- fa(food.group,nfactors = 5,rotate = "oblimin",fm="minres", scores = "regression")
+summary(factor_5)
+print(factor_5$loadings, cutoff = 0.5)
+print(factor_5$scores)
+
+f5 <- fa(food.group,nfactors = 5)
+f5
+
+#Uniqueness for variable 1
+1 - sum(f5$loadings[1,]^2)
+```
+
+From the Parallel analysis scree plot we can see that 5 factors will be sufficient to explain the all the variables. 
+
+Accuracy check:
+# There in no overlapping of variables in the factor.
+# RMSE = 0.04
+# Goods of fit is 99%
+
+
+###################################################################################
+CLUSTER ANALSYSIS
+
+```{r}
+#finding the number of clusters:
+scale_food <- scale(food.group)
+
+# Elbow method
+library(factoextra)
+fviz_nbclust(scale_food, kmeans, method = "wss",verbose = interactive(),
+             linecolor = "blue",k.max = 20)
+# optimum number of cluster is 4.
+
+
+# Dendogram:
+library(magrittr)
+res.hc <- food.group %>%
+  scale() %>%                    # Scale the data
+  dist(method = "euclidean") %>% # Compute dissimilarity matrix
+  hclust(method = "ward.D2") 
+
+fviz_dend(res.hc, k = 4, # Cut in four groups
+          cex = 0.6, # label size
+          k_colors = c("red", "blue", "orange", "black"),
+          color_labels_by_k = TRUE, # color labels by groups
+          rect = TRUE, # Add rectangle around groups
+          main = "Cluster Dendogram")
+
+
+# K-means cluster:
+library("cluster")
+library("factoextra")
+k1 <- kmeans(scale_food,4, nstart = 20)
+fviz_cluster(k1, data = scale_food,labelsize = 9,ggtheme = theme_replace(),
+             ggtitle = "K-Means clustering")
+
+```
+
+From the elbow method we can see that the optimum number of clusters is 4.
+One cluster contains all the meat products group together. Cluster 2 contains all the vegetables, fruits products. Cluster 3 contain the nuts and seed products. Cluster 4 contains breakfast cereals.
+
+
